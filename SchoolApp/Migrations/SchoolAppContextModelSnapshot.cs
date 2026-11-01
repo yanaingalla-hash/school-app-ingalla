@@ -30,15 +30,19 @@ namespace SchoolApp.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Phone")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("StudentNo")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("StudentId");
