@@ -19,10 +19,30 @@ namespace SchoolApp.Controllers
             _context = context;
         }
 
-        // GET: Students
-        public async Task<IActionResult> Index()
+        // GET: Students?searchString=maria
+        // searchString = what the user typed in the search box
+        public async Task<IActionResult> Index(string? searchString)
         {
-            return View(await _context.Student.ToListAsync());
+            // Start with all students, but don't load them yet
+            var students = from s in _context.Student select s;
+
+            // If the user typed something, keep only the matching students
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                // Lowercase, so "MARIA" also finds "Maria Santos"
+                var text = searchString.ToLower();
+
+                // Match the name, the student number OR the email
+                students = students.Where(s => s.Name!.ToLower().Contains(text)
+                                    || s.StudentNo!.ToLower().Contains(text)
+                                    || s.Email!.ToLower().Contains(text));
+            }
+
+            // Send the text back, so it stays in the search box
+            ViewData["searchString"] = searchString;
+
+            // Now run the search and show the results
+            return View(await students.ToListAsync());
         }
 
         // GET: Students/Details/5
@@ -54,8 +74,15 @@ namespace SchoolApp.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("StudentId,StudentNo,Name,Email,Phone,Age,BirthDate")] Student student)
+        public async Task<IActionResult> Create([Bind("StudentId,StudentNo,Name,Email,ConfirmEmail,Phone,Age,BirthDate")] Student student)
         {
+            // Check if the email is already registered
+            if (await _context.Student.AnyAsync(s => s.Email == student.Email))
+            {
+                ModelState.AddModelError(
+                    "Email",
+                    "This email is already registered.");
+            }
             if (ModelState.IsValid)
             {
                 _context.Add(student);
@@ -86,13 +113,22 @@ namespace SchoolApp.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("StudentId,StudentNo,Name,Email,Phone,Age,BirthDate")] Student student)
+        public async Task<IActionResult> Edit(int id, [Bind("StudentId,StudentNo,Name,Email,ConfirmEmail,Phone,Age,BirthDate")] Student student)
         {
             if (id != student.StudentId)
             {
                 return NotFound();
             }
 
+            // Check if another student is already using this email
+            if (await _context.Student.AnyAsync(
+                s => s.Email == student.Email &&
+                    s.StudentId != student.StudentId))
+            {
+                ModelState.AddModelError(
+                    "Email",
+                    "This email is already registered.");
+            }
             if (ModelState.IsValid)
             {
                 try
